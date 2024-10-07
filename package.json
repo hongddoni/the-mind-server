@@ -1,6 +1,6 @@
 {
   "name": "the-mind-server",
-  "packageManager": "yarn@4.4.1",
+  "packageManager": "yarn@1.22.19",
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/server.ts",
