@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.io Client Test</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+<h1>Socket.io Test</h1>
+<button id="submitCard">Submit Card</button>
+<script>
+    // 게임 네임스페이스로 연결
+    const gameSocket = io('http://localhost:3000/game');
+
+    // 서버에서 초기 카드를 받으면 출력
+    gameSocket.on('initCards', (cards) => {
+        console.log('Initial Cards:', cards);
+    });
+
+    // 서버에서 업데이트된 제출된 카드를 받으면 출력
+    gameSocket.on('updateSubmittedCards', (submittedCards) => {
+        console.log('Submitted Cards:', submittedCards);
+    });
+
+    // 카드 제출 버튼 클릭 시 카드 제출
+    document.getElementById('submitCard').addEventListener('click', () => {
+        const card = 'Ace of Spades';
+        gameSocket.emit('submitCard', card);
+    });
+
+    // 채팅 네임스페이스로 연결
+    const chatSocket = io('http://localhost:3000/chat');
+
+    // 채팅 메시지를 서버에 보냄
+    chatSocket.emit('sendMessage', 'Hello, World!');
+
+    // 서버로부터 채팅 메시지를 받으면 출력
+    chatSocket.on('receiveMessage', (data) => {
+        console.log('Received Message:', data.message);
+    });
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.io Client Test</title>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Socket.io Test</h1>
+  <button id="submitCard">Submit Card</button>
+  <script>
+    const gameSocket = io('http://localhost:3000/game');
+
+    gameSocket.on('initCards', (cards) => {
+      console.log('Initial Cards:', cards);
+    });
+
+    document.getElementById('submitCard').addEventListener('click', () => {
+      gameSocket.emit('submitCard', 'Ace of Spades');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",    // 컴파일된 파일이 저장될 경로
+    "rootDir": "./src",    // 소스 파일의 루트 경로
+    "target": "ES2016",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "*": ["node_modules/*"]
+    },
+    "types": ["node", "express"]
+  },
+  "include": ["src/**/*.ts"], // 컴파일할 파일들
+  "exclude": ["node_modules"] // 컴파일에서 제외할 파일들
+}

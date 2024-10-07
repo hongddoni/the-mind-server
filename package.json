@@ -1,0 +1,25 @@
+{
+  "name": "the-mind-server",
+  "packageManager": "yarn@4.4.1",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "nodemon": "^3.1.7",
+    "socket.io": "^4.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/dotenv": "^8.2.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.4",
+    "@types/socket.io": "^3.0.2"
+  }
+}
