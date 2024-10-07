@@ -4,7 +4,15 @@ import {Server, Socket} from "socket.io";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: [
+        "http://localhost:5173", // 로컬 개발 환경 허용
+        "https://the-mind-hongddoni.netlify.app" // Netlify 배포 URL 허용
+    ],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+    credentials: true // 인증 정보 포함 허용
+}));
 const httpServer = createServer(app);
 
 interface Rule {
@@ -36,8 +44,13 @@ const games: Record<string, Game> = {
 
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:5173",
-        methods: ["GET", "POST"]
+        origin: [
+            "http://localhost:5173", // 로컬 개발 환경 허용
+            "https://the-mind-hongddoni.netlify.app" // Netlify 배포 URL 허용
+        ],
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type"],
+        credentials: true // 인증 정보(쿠키, 헤더 등)를 포함하여 요청 허용
     }
 });
 
@@ -351,3 +364,5 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+//https://the-mind-server.fly.dev/
