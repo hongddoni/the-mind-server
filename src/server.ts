@@ -126,47 +126,48 @@ function checkCardsAndLevelUp(gameType: string) {
         }
 
         // heart card up
-        switch (game.rule.level && playersLength > 1) {
-            case 2 :
-                game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
-                break;
-            case 5 :
-                game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
-                break;
-            case 8 :
-                if (playersLength === 4) break;
-                game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
-                break;
-            case 11 :
-                if (playersLength === 3) break;
-                game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
-                break;
-            default:
-                break;
+        if(playersLength > 1) {
+            switch (game.rule.level) {
+                case 2 :
+                    game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
+                    break;
+                case 5 :
+                    game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
+                    break;
+                case 8 :
+                    if (playersLength === 4) break;
+                    game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
+                    break;
+                case 11 :
+                    if (playersLength === 3) break;
+                    game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
+                    break;
+                default:
+                    break;
+            }
+
+            // suriken card up
+            switch (game.rule.level) {
+                case 3:
+                    game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
+                    break;
+                case 6:
+                    game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
+                    break;
+                case 9:
+                    if (playersLength === 4) break;
+                    game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
+                    break;
+                case 12:
+                    if (playersLength === 3) break;
+                    game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
+                    break;
+                default:
+                    break;
+            }
+
+            io.to(gameType).emit('ruleInfo', game.rule);
         }
-
-        // suriken card up
-        switch (game.rule.level && playersLength > 1) {
-            case 3:
-                game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
-                break;
-            case 6:
-                game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
-                break;
-            case 9:
-                if (playersLength === 4) break;
-                game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
-                break;
-            case 12:
-                if (playersLength === 3) break;
-                game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
-                break;
-            default:
-                break;
-        }
-
-        io.to(gameType).emit('ruleInfo', game.rule);
-
         dealCardsToPlayers(game); // 새로운 카드 부여
 
         // 로그 추가
