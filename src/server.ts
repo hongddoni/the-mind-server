@@ -85,7 +85,7 @@ function generateUniqueRandomNumbersForGame(count: number, max: number, usedNumb
 
 // 모든 유저가 ready 상태인지 확인
 function allPlayersReady(game: Game) {
-    // if(game.players.length < 2) return false;
+    if(game.players.length < 2) return false;
     return game.players.every(player => player.status === 'ready');
 }
 
@@ -126,7 +126,7 @@ function checkCardsAndLevelUp(gameType: string) {
         }
 
         // heart card up
-        switch (game.rule.level) {
+        switch (game.rule.level && playersLength > 1) {
             case 2 :
                 game.rule = {level: game.rule.level, heart: game.rule.heart + 1, suriken: game.rule.suriken}
                 break;
@@ -146,7 +146,7 @@ function checkCardsAndLevelUp(gameType: string) {
         }
 
         // suriken card up
-        switch (game.rule.level) {
+        switch (game.rule.level && playersLength > 1) {
             case 3:
                 game.rule = {level: game.rule.level, heart: game.rule.heart, suriken: game.rule.suriken + 1}
                 break;
