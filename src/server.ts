@@ -184,124 +184,127 @@ function checkCardsAndLevelUp(gameType: string) {
     }
 }
 
-io.on('connection', (socket: Socket) => {
-    function endGame(game: Game, gameType: string) {
-        game.status = 'ended';
-        resetGame(game);
-        io.to(gameType).emit('gameEnded', {gameType});
-    }
+function useHeartCard(gameType: string) {
+    const game = games[gameType];
+    if (!game) return;
+    if (submittedCard.length === 0) return;
+    if (game.rule.heart <= 0) return;
+    game.rule.heart -= 1;
+    io.to(gameType).emit('heartDecreased', {heart: game.rule.heart})
+    submittedCard.pop();
+    io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
+}
 
-    function useHeartCard(gameType: string) {
-        const game = games[gameType];
-        if (!game) return;
-        if (submittedCard.length === 0) return;
-        if (game.rule.heart <= 0) return;
-        game.rule.heart -= 1;
-        socket.emit('heartDecreased', {heart: game.rule.heart})
-        submittedCard.pop();
-        io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
-    }
+function startGame(gameType: string) {
+    const game = games[gameType];
+    if (!game) return;
 
-    function useSurikenCard(gameType: string) {
-        const game = games[gameType];
-        if (!game) return;
-        if (game.rule.suriken <= 0) return;
+    game.status = 'playing';
+    setGameRule(game); // 룰 설정
+    dealCardsToPlayers(game); // 유저들에게 카드 부여
+    submittedCard = []; // 새로운 게임이 시작되면 submittedCard 초기화
 
-        game.rule.suriken -= 1;
+    game.players.forEach(v => v.status === 'playing');
 
-        // 각 플레이어의 가장 작은 카드를 모음
-        const smallestCards = game?.players
-            .map(player => {
-                // 플레이어의 가장 작은 카드를 찾음
-                const smallestCard = Math.min(...player.cards);
-                return {playerId: player.id, card: smallestCard};
-            })
-            .filter(playerCard => !isNaN(playerCard.card)) // 카드가 있는 플레이어만 선택
-            .sort((a, b) => a.card - b.card); // 카드 크기대로 정렬
+    io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
 
-        // 정렬된 가장 작은 카드를 제출된 카드 목록에 추가
-        smallestCards.forEach(({card}) => {
-            submittedCard.push(card);
-        });
-
-        // 각 플레이어에서 해당 카드 제거
-        smallestCards.forEach(({playerId, card}) => {
-            const player = game.players.find(p => p.id === playerId);
-
-            if (player) {
-                if (player.cards.length <= 0) return;
-                const cardIndex = player.cards.indexOf(card);
-
-                if (cardIndex !== -1) {
-                    player.cards.splice(cardIndex, 1); // 플레이어의 카드에서 해당 카드 제거
-                    const userCards = player.cards;
-
-                    io.to(gameType).emit('userCards', {userCards});
-                }
-            }
-        });
-
-        io.emit('surikenDecreased', {suriken: game.rule.suriken});
-
-        // 제출된 카드 목록을 업데이트
-        io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
-        checkCardsAndLevelUp(gameType)
-    }
-
-// 게임 상태와 룰을 초기화하는 함수 (restart 시 사용)
-    function resetGame(game: Game) {
-        setGameRule(game);
-        submittedCard = []; // 제출된 카드 초기화
-
-        const user = game.players.find(p => p.id === socket.id);
-        if (user) {
-            user.cards = [];
-            user.status = 'ready'
-        }
-    }
-
-    function restartGame(gameType: string) {
-        const game = games[gameType];
-        if (!game) return;
-
-        // 게임을 초기화
-        resetGame(game);
-
-        io.to(gameType).emit('gameRestarted', {
+    // 각 플레이어에게 개별 카드를 전송
+    game.players.forEach(player => {
+        player.status = 'playing'; // 플레이어 상태를 'playing'으로 설정
+        io.to(player.id).emit('gameStarted', {
             gameType,
             rule: game.rule,
-            players: game.players.map(p => ({id: p.id, status: p.status}))
+            cards: player.cards
         });
+    });
+}
 
-        // 플레이어들이 모두 ready 상태가 되면 게임 시작
-        if (allPlayersReady(game)) {
-            startGame(gameType);
+function endGame(game: Game, gameType: string, socketId: string) {
+    game.status = 'ended';
+    resetGame(game, socketId);
+    io.to(gameType).emit('gameEnded', {gameType});
+}
+
+
+function useSurikenCard(gameType: string) {
+    const game = games[gameType];
+    if (!game) return;
+    if (game.rule.suriken <= 0) return;
+
+    game.rule.suriken -= 1;
+
+    // 각 플레이어의 가장 작은 카드를 모음
+    const smallestCards = game?.players
+        .map(player => {
+            // 플레이어의 가장 작은 카드를 찾음
+            const smallestCard = Math.min(...player.cards);
+            return {playerId: player.id, card: smallestCard};
+        })
+        .filter(playerCard => !isNaN(playerCard.card)) // 카드가 있는 플레이어만 선택
+        .sort((a, b) => a.card - b.card); // 카드 크기대로 정렬
+
+    // 정렬된 가장 작은 카드를 제출된 카드 목록에 추가
+    smallestCards.forEach(({card}) => {
+        submittedCard.push(card);
+    });
+
+    // 각 플레이어에서 해당 카드 제거
+    smallestCards.forEach(({playerId, card}) => {
+        const player = game.players.find(p => p.id === playerId);
+
+        if (player) {
+            if (player.cards.length <= 0) return;
+            const cardIndex = player.cards.indexOf(card);
+
+            if (cardIndex !== -1) {
+                player.cards.splice(cardIndex, 1); // 플레이어의 카드에서 해당 카드 제거
+                const userCards = player.cards;
+
+                io.to(gameType).emit('userCards', {userCards});
+            }
         }
+    });
+
+    io.emit('surikenDecreased', {suriken: game.rule.suriken});
+
+    // 제출된 카드 목록을 업데이트
+    io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
+    checkCardsAndLevelUp(gameType)
+}
+
+// 게임 상태와 룰을 초기화하는 함수 (restart 시 사용)
+function resetGame(game: Game, socketId: string) {
+    setGameRule(game);
+    submittedCard = []; // 제출된 카드 초기화
+
+    const user = game.players.find(p => p.id === socketId);
+    if (user) {
+        user.cards = [];
+        user.status = 'ready'
     }
+}
 
-    function startGame(gameType: string) {
-        const game = games[gameType];
-        if (!game) return;
+function restartGame(gameType: string, socketId: string) {
+    const game = games[gameType];
+    if (!game) return;
 
-        game.status = 'playing';
-        setGameRule(game); // 룰 설정
-        dealCardsToPlayers(game); // 유저들에게 카드 부여
-        submittedCard = []; // 새로운 게임이 시작되면 submittedCard 초기화
+    // 게임을 초기화
+    resetGame(game, socketId);
 
-        game.players.forEach(v => v.status === 'playing');
+    io.to(gameType).emit('gameRestarted', {
+        gameType,
+        rule: game.rule,
+        players: game.players.map(p => ({id: p.id, status: p.status}))
+    });
 
-        io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
-
-        // 각 플레이어에게 개별 카드를 전송
-        game.players.forEach(player => {
-            player.status = 'playing'; // 플레이어 상태를 'playing'으로 설정
-            io.to(player.id).emit('gameStarted', {
-                gameType,
-                rule: game.rule,
-                cards: player.cards
-            });
-        });
+    // 플레이어들이 모두 ready 상태가 되면 게임 시작
+    if (allPlayersReady(game)) {
+        startGame(gameType);
     }
+}
+
+io.on('connection', (socket: Socket) => {
+
 
     socket.on('useHeart', (gameType: string) => {
         useHeartCard(gameType);
@@ -312,7 +315,7 @@ io.on('connection', (socket: Socket) => {
     })
 
     socket.on('restartGame', (gameType: string) => {
-        restartGame(gameType);
+        restartGame(gameType, socket.id);
     });
 
     socket.on('selectGame', (gameType: string) => {
@@ -367,7 +370,7 @@ io.on('connection', (socket: Socket) => {
                 // 하트 감소 조건 체크
                 if (submittedCard.length > 0 && submittedCard[submittedCard.length - 1] > card) {
                     // 하트가 0이 되면 게임 종료
-                    endGame(game, gameType)
+                    endGame(game, gameType, socket.id)
                 }
 
                 submittedCard.push(card); // 제출된 카드에 추가
@@ -384,7 +387,7 @@ io.on('connection', (socket: Socket) => {
 
     socket.on('decreaseHeart', (gameType: string) => {
         const game = games[gameType];
-        endGame(game, gameType); // 하트 소진 시 게임 종료
+        endGame(game, gameType, socket.id); // 하트 소진 시 게임 종료
     });
 
     socket.on('getRuleInfo', () => {
