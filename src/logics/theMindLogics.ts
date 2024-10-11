@@ -1,4 +1,4 @@
-import {Server, Socket} from "socket.io";
+import {Server} from "socket.io";
 import {submittedCard, theMindGame as games, resetSubmittedCard} from "../events/theMindSocketEvents";
 import {TheMindGame} from "../types/theMindTypes";
 
