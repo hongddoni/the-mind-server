@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
                 nickname,
                 status: "waiting",
                 color,
-                characters: Array.from({length: 1}).map((_, idx) => {
+                characters: Array.from({length: 7}).map((_, idx) => {
                     return {
                         id: `${color}-${idx}`,
                         ladderLevel: 0,
