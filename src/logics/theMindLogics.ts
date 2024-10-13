@@ -1,65 +1,88 @@
 import {Server} from "socket.io";
-import {submittedCard, theMindGame as games, resetSubmittedCard} from "../events/theMindSocketEvents";
+import {submittedCard, resetSubmittedCard} from "../events/theMindSocketEvents";
+import {theMindGame as games} from "../server";
 import {TheMindGame} from "../types/theMindTypes";
 
-export function theMindLogics(io: Server) {
+export function generateUniqueRandomNumbersForGame(count: number, max: number, usedNumbers: number[]): number[] {
+    const numbers: number[] = [];
 
-// 유저에게 고유한 5장의 카드를 부여
-    function dealCardsToPlayers(game: TheMindGame) {
-        const usedNumbers: number[] = []; // 모든 플레이어 간 중복을 방지하기 위해 사용된 숫자를 추적
-        const nowLevel = game.rule.level;
+    while (numbers.length < count) {
+        const rand = Math.floor(Math.random() * max) + 1;
 
-        game.players.forEach(player => {
-            player.cards = generateUniqueRandomNumbersForGame(nowLevel, 100, usedNumbers);
-        });
-    }
-
-// 게임 내에서 고유한 카드를 생성하는 함수
-    function generateUniqueRandomNumbersForGame(count: number, max: number, usedNumbers: number[]): number[] {
-        const numbers: number[] = [];
-
-        while (numbers.length < count) {
-            const rand = Math.floor(Math.random() * max) + 1;
-
-            // 중복되지 않도록 숫자를 생성하고, 이미 사용된 숫자와도 비교
-            if (!numbers.includes(rand) && !usedNumbers.includes(rand)) {
-                numbers.push(rand);
-                usedNumbers.push(rand); // 다른 플레이어와 중복되지 않도록 사용된 숫자로 저장
-            }
+        // 중복되지 않도록 숫자를 생성하고, 이미 사용된 숫자와도 비교
+        if (!numbers.includes(rand) && !usedNumbers.includes(rand)) {
+            numbers.push(rand);
+            usedNumbers.push(rand); // 다른 플레이어와 중복되지 않도록 사용된 숫자로 저장
         }
-
-        return numbers;
     }
+
+    return numbers;
+}
+
 
 // 모든 유저가 ready 상태인지 확인
-    function allPlayersReady(game: TheMindGame) {
-        if (game.players.length < 2) return false;
-        return game.players.every(player => player.status === 'ready');
+export function theMindAllPlayersReady(game: TheMindGame) {
+    if (game.players.length < 2) return false;
+    return game.players.every(player => player.status === 'ready');
+}
+
+// 유저에게 고유한 5장의 카드를 부여
+export function dealCardsToPlayers(game: TheMindGame) {
+    const usedNumbers: number[] = []; // 모든 플레이어 간 중복을 방지하기 위해 사용된 숫자를 추적
+    const nowLevel = game.rule.level;
+
+    game.players.forEach(player => {
+        player.cards = generateUniqueRandomNumbersForGame(nowLevel, 100, usedNumbers);
+    });
+}
+
+export function setGameRule(game: TheMindGame) {
+    const playerCount = game.players.length;
+
+    switch (playerCount) {
+        case 2:
+            game.rule = {level: 1, heart: 2, suriken: 1};
+            return;
+        case 3:
+            game.rule = {level: 1, heart: 3, suriken: 1};
+            return;
+        case 4:
+            game.rule = {level: 1, heart: 4, suriken: 1};
+            return;
+        default:
+            game.rule = {level: 1, heart: 1, suriken: 1};
+            return;
     }
+}
 
-// 게임 룰 설정
-    function setGameRule(game: TheMindGame) {
-        const playerCount = game.players.length;
+export function startTheMind(io: Server, gameType: string) {
+    const game = games;
+    if (!game) return;
 
-        switch (playerCount) {
-            case 2:
-                game.rule = {level: 1, heart: 2, suriken: 1};
-                return;
-            case 3:
-                game.rule = {level: 1, heart: 3, suriken: 1};
-                return;
-            case 4:
-                game.rule = {level: 1, heart: 4, suriken: 1};
-                return;
-            default:
-                game.rule = {level: 1, heart: 1, suriken: 1};
-                return;
-        }
-    }
+    game.status = 'playing';
+    setGameRule(game); // 룰 설정
+    dealCardsToPlayers(game); // 유저들에게 카드 부여
+    resetSubmittedCard() // 새로운 게임이 시작되면 submittedCard 초기화
 
+    game.players.forEach(v => v.status === 'playing');
+
+    io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
+
+    // 각 플레이어에게 개별 카드를 전송
+    game.players.forEach(player => {
+        player.status = 'playing'; // 플레이어 상태를 'playing'으로 설정
+        io.to(player.id).emit('gameStarted', {
+            gameType,
+            rule: game.rule,
+            cards: player.cards
+        });
+    });
+}
+
+export function theMindLogics(io: Server) {
 // 카드 소진 확인 및 레벨 증가
     function checkCardsAndLevelUp(gameType: string) {
-        const game = games[gameType];
+        const game = games;
         if (!game) return;
         const allCardsUsed = game.players.every(player => player.cards.length === 0);
         if (allCardsUsed) {
@@ -133,7 +156,7 @@ export function theMindLogics(io: Server) {
     }
 
     function useHeartCard(gameType: string) {
-        const game = games[gameType];
+        const game = games;
         if (!game) return;
         if (submittedCard.length === 0) return;
         if (game.rule.heart <= 0) return;
@@ -141,30 +164,6 @@ export function theMindLogics(io: Server) {
         io.to(gameType).emit('heartDecreased', {heart: game.rule.heart})
         submittedCard.pop();
         io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
-    }
-
-    function startGame(gameType: string) {
-        const game = games[gameType];
-        if (!game) return;
-
-        game.status = 'playing';
-        setGameRule(game); // 룰 설정
-        dealCardsToPlayers(game); // 유저들에게 카드 부여
-        resetSubmittedCard() // 새로운 게임이 시작되면 submittedCard 초기화
-
-        game.players.forEach(v => v.status === 'playing');
-
-        io.to(gameType).emit('submittedCardsUpdated', {submittedCard});
-
-        // 각 플레이어에게 개별 카드를 전송
-        game.players.forEach(player => {
-            player.status = 'playing'; // 플레이어 상태를 'playing'으로 설정
-            io.to(player.id).emit('gameStarted', {
-                gameType,
-                rule: game.rule,
-                cards: player.cards
-            });
-        });
     }
 
     function endGame(game: TheMindGame, gameType: string, socketId: string) {
@@ -175,7 +174,7 @@ export function theMindLogics(io: Server) {
 
 
     function useSurikenCard(gameType: string) {
-        const game = games[gameType];
+        const game = games;
         if (!game) return;
         if (game.rule.suriken <= 0) return;
 
@@ -190,11 +189,6 @@ export function theMindLogics(io: Server) {
             })
             .filter(playerCard => !isNaN(playerCard.card)) // 카드가 있는 플레이어만 선택
             .sort((a, b) => a.card - b.card); // 카드 크기대로 정렬
-
-        // 정렬된 가장 작은 카드를 제출된 카드 목록에 추가
-        smallestCards.forEach(({card}) => {
-            submittedCard.push(card);
-        });
 
         // 각 플레이어에서 해당 카드 제거
         smallestCards.forEach(({playerId, card}) => {
@@ -232,7 +226,7 @@ export function theMindLogics(io: Server) {
     }
 
     function restartGame(gameType: string, socketId: string) {
-        const game = games[gameType];
+        const game = games;
         if (!game) return;
 
         // 게임을 초기화
@@ -245,18 +239,18 @@ export function theMindLogics(io: Server) {
         });
 
         // 플레이어들이 모두 ready 상태가 되면 게임 시작
-        if (allPlayersReady(game)) {
-            startGame(gameType);
+        if (theMindAllPlayersReady(game)) {
+            startTheMind(io, gameType);
         }
     }
 
     return {
         dealCardsToPlayers,
-        allPlayersReady,
+        allPlayersReady: theMindAllPlayersReady,
         setGameRule,
         checkCardsAndLevelUp,
         useHeartCard,
-        startGame,
+        startGame: startTheMind,
         endGame,
         useSurikenCard,
         restartGame,
